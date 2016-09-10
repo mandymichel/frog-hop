@@ -37,8 +37,3 @@ local transOpts
 
 transition.to (frog, {delay = 1000, time = 2000, x = 427, y = 280, transition = easing.inOutQuad})
 
-local banana = display.newImageRect("banana_PNG844.png", 500, 500)
-banana.x = centerX
-banana.y = centerY
-banana: scale(.2, .2)
-
