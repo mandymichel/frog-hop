@@ -1,23 +1,96 @@
 -- Project: GameDev-02- DisplayAnimate
 -- Copyright 2012 Three Ring Ranch
 -- http://MasteringCoronaSDK.com
+-- Project: GameDev-02- DisplayAnimate
+-- Copyright 2012 Three Ring Ranch
+-- http://MasteringCoronaSDK.com
+local storyboard = require("storyboard")
 
-local widget = require ("widget")
+local GGdata = require("GGdata") 
 
-local pads = {}
-local idx = 0
-local frog
-local frogJumpSpeed = 600
-local fly
-local audioIsPlaying = true
+display.setStatusBar(display.HiddenStatusBar)
 
-local centerX = display.contentWidth *.5
-local centerY = display.contentHeight * .5
+centerX = display.contentWidth *.5
+centerY = display.contentHeight * .5
 
-audio.reserveChannels(2)
+local prefs = GGdata:new("preferences")
+
+musicIsPlaying = true
+SFXisPlaying = true
+
+
+local function loadPrefs()
+	prefs: load()
+	musicIsPlaying = prefs.musicIsPlaying
+	SFXisPlaying = prefs.SFXisPlaying
+end
+
+function savePrefs()
+	prefs.musicIsPlaying = musicIsPlaying
+	prefs.SFXisPlaying = SFXisPlaying
+	prefs:save()
+end
+
+-- local path
+-- local file
+-- local data = "Blah blah blah"
+
+-- local score = 140
+
+-- --path = system.pathForFile ("highscore.txt", system.DocumentsDirectory)
+-- --file = io.open (path, "a")
+-- --file: write(score .."\n")
+-- --io.close(file)
+
+-- local savedData
+
+-- path = system.pathForFile ("story.txt", system.ResourceDirectory)
+-- file = io.open (path, "r")
+-- savedData = file: read("*a")
+-- io.close(file)
+
+-- local myText = display.newText(savedData, 10, 10, display.contentWidth - 20, 0, native.systemFont, 16)
+
+-- --print(savedData)
+
+-- path = system.pathForFile ("highscore.txt", system.DocumentsDirectory)
+-- file = io.open (path, "r")
+-- local idx = 1
+-- for x in file: lines() do
+-- 	--display.newText(tostring(x), 100, 40 * idx, "Helvetica", 24)
+-- 	idx = idx + 1
+-- end
+-- io.close(file)
+
+-- --load a text file and return it as a string
+-- local function loadTextFile (fname, base)
+-- 	base = base or system.ResourceDirectory
+-- 	local path = system.pathForFile (fname, base)
+-- 	local txtData
+-- 	local file = io.open(path, "r")
+-- 	if file then
+-- 		txtData = file:read("*a")
+-- 		io.close(file)
+-- 	end
+-- 	return txtData
+-- end
+-- savedData = loadTextFile("story.txt")
+-- print(savedData)
+
+-- local scores = GGdata:new(1, "gamescores")
+-- -- scores.playername = "Mandy"
+-- -- local gamescores = {30, 50, 150, 60, 200}
+-- -- scores.highscores = gamescores
+-- -- scores: save()
+-- -- print(scores.playername)
+
+-- local myData = scores.highscores
+-- print (myData[1], myData[2], myData[5])
+
+audio.reserveChannels(1)
 
 sndChanMusic = 1
-sndChanSFX = 2
+--sndChanSFX = 2
 
 local sndBuhBuh = audio.loadSound("audio/bubububuh.mp3")
 local sndWhip = audio.loadSound("audio/whip.mp3")
@@ -27,6 +100,24 @@ local sndJump = audio.loadSound("audio/boing.mp3")
 local sndMusic = audio.loadStream("audio/HappyPants.wav")
 
 local allSFX = {sndBuhBuh, sndWhip, sndYip, sndWhoo, sndJump}
+
+function playSFX(audioHandle, opt)
+	local options = opt or {}
+	local loopNum = options.loop or 0
+	local channel = options.channel or 0
+	local chanUsed = nil
+	if SFXisPlaying then
+		chanUsed = audio.play(audioHandle, {channel = channel, loops = loopNum})
+	end
+	return chanUsed
+end
+
+function playMusic()
+		if musicIsPlaying then
+			audio.play(sndMusic, {channel=sndChanMusic, loops = -1})
+			audio.setVolume(1, {channel = sndChanMusic})			
+		end
+end
 
 local function playSound(audioObj, chn)
 	local chanUsed = nil
@@ -39,22 +130,8 @@ end
 
 local function resetMusic(e)
 	if e.completed == "false" and e.phase == "stopped" then
-		audio.setVolume(1, {channel = musicChannel})
+		audio.setVolume(.25, {channel = sndChanMusic})
 		audio.rewind(sndMusic)
-	end
-end
-
-local function playMusic(event)
-	local action = event.target.action
-	if action == "play" then
-		if audioIsPlaying then
-			audio.play(sndMusic, {channel=sndChanMusic, onComplete= resetMusic})
-		end
-	elseif action == "stop" then
-		audio.stop(sndChanMusic)
-		audio.rewind(sndChanMusic)
-	elseif action == "fade out" then
-		audio.fadeOut ({channel= sndChanMusic, time= 3000})
 	end
 end
 
@@ -65,102 +142,16 @@ local function makeButton(title, xPos, yPos, listener, action)
    btn.y = yPos
 end
 
-makeButton("Play Music", centerX-100, 80, playMusic, "play")
-makeButton("Stop & Rewind", centerX-100, 20, playMusic, "stop")
-makeButton("Fade Out", centerX-100, 60, playMusic, "fade out")
-
-local function playSFX(event)
-	local snd = event.target.action
-	playSound(snd, 0)
-end
-
-for x = 1, #allSFX do
-	makeButton("Play SFX", centerX + 100, 40 +(40*x), playSFX, allSFX[x])
-end
-
-local function buttonHit(target)
-	playMusic(target)
-end
-
-local function hopDone(obj)
-	local function killPad(lpobj)
-		display.remove (lpobj)
-	end
-	transition.to (pads[1], {time = 1000, alpha = 0, xScale = .1, yScale = .1, rotation = 360, onComplete = killPad})
-end
-
-local function frogTapped (event)
-	print("Croak!")
-	transition.to(event.target, {rotation = 360, delta = true})
-end
-
-local function padTouched (event)
-	local pad = event.target
-	if event.phase == "ended" then
-		local angleBetween = math.ceil(math.atan2((pad.y - frog.y), (pad.x - frog.x)) * 180 / math.pi) + 90
-		frog.rotation = angleBetween
-		transition.to (frog, {time = frogJumpSpeed, x = pad.x, y = pad.y, transition = easing.InOutQuad})
-	end
-end
-
-local function flyTouched (event)
-	local obj = event.target
-	if event.phase == "began" then
-		display.getCurrentStage(): setFocus(obj)
-		obj.startMoveX = obj.x
-		obj.startMoveY = obj.y
-	elseif event.phase == "moved" then
-		obj.x = (event.x - event.xStart) + obj.startMoveX
-		obj.y = (event.y - event.yStart) + obj.startMoveY
-	elseif event.phase == "ended" or event.phase == "cancelled" then
-		display.getCurrentStage(): setFocus(nil)
+--makeButton("Play Music", centerX-100, 80, playMusic, "play")
+--makeButton("Stop & Rewind", centerX-100, 20, playMusic, "stop")
+--makeButton("Fade Out", centerX-100, 60, playMusic, "fade out")
 
 
-end
-return true
-end
-
-local bg = display.newImageRect("images/bg_iPhone.png", display.contentWidth, display.contentHeight)
-bg.x = centerX
-bg.y = centerY
-
-for vVal = 1, 4 do
-	for hVal = 1, 6 do
-		idx = idx + 1
-		local pad = display.newImageRect("images/lilypad_green.png", 64, 64)
-		pad: rotate(math.random(0, 359))
-		pad.x = (hVal * 75) - 23
-		pad.y = (vVal * 70)
-		local sizer = 1 + math.random(-1, 1) / 10
-		pad: scale(sizer, sizer)
-		pad: addEventListener("touch", padTouched)
-		pads[idx] = pad
-		pads[idx].idx = idx
-	end
-end
-local function deviceOrientation (event)
-	print(event.type)
-end
-
-local function touchedFrog (event)
-	print(event.target.name .. " says, 'Ouch'")
-	print(event.phase)
-end
-
-frog = display.newImageRect("images/frog.png", 64, 95)
-frog.x = 52
-frog.y = 70
-frog.name = "Gladys"
-
-frog: addEventListener ("tap", frogTapped)
-
-fly = display.newImageRect("images/fly.png", 32, 22)
-fly.x = centerX
-fly.y = 15
-fly: addEventListener ("touch", flyTouched)
-
-makeButton("Play", centerX, 80, buttonHit, "play")
+--for x = 1, #allSFX do
+--	makeButton("Play SFX", centerX + 100, 40 +(40*x), playSFX, allSFX[x])
+--end
 
 
-Runtime: addEventListener ("orientation", deviceOrientation)
+loadPrefs()
 
+storyboard.gotoScene ("menu", {effect = "zoomOutInRotate"})
